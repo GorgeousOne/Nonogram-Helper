@@ -60,28 +60,38 @@ class State:
 		return new
 
 	def __str__(self) -> str:
-		pad_row = max(len(rule) for rule in self.rules_row) * 3
-		pad_col = max(len(rule) for rule in self.rules_col)
-		vis = ['  ', '██', ' X', ' *']
+		#determine padding around nonogram depending on max length of rules
+		pad_x = max(len(rule) for rule in self.rules_row) * 3 + 1
+		pad_y = max(len(rule) for rule in self.rules_col)
+		vis = ['   ', '███', ' X ', ' * ']
 		lines = []
 
-		for y in range(pad_col):
-			inv_y = pad_col - y - 1
-			line = ' ' * pad_row
+		# write down column rules
+		for y in range(pad_y):
+			line = ' ' * pad_x
+			# wirte down column numbers bottom aligned
 			for rule in self.rules_col:
-				if len(rule) > inv_y:
-					line += f'{rule[y]:>2}'
+				off_y = pad_y - len(rule)
+				if off_y <= y:
+					line += f'{rule[y - off_y]:>2} '
+				else:
+					line += '   '
+
 			lines.append(line)
 
-		sep = ' ' * pad_row + '-' * (self.width * 2)
+		# hline
+		sep = ' ' * pad_x + '-' * (self.width * 3)
 		lines.append(sep)
 
+		# write down row rules and rows
 		for y in range(self.height):
-			rule_str = ''.join([f'{num:>2}' for num in self.rules_row[y]])
+			rule_str = ''.join([f'{num:>3}' for num in self.rules_row[y]])
 			field_str = ''.join([vis[i] for i in self[y,:]])
-			line = ' '*(pad_row - len(rule_str) - 1) + rule_str + '|' + field_str + '|'
+			# field_str = ''.join([f'{i:>2} ' for i in self[y,:]])
+			line = ' '*(pad_x - len(rule_str) - 1) + rule_str + ' |' + field_str + '|'
 			lines.append(line)
-		
+
+		# hline
 		lines.append(sep)
 		return '\n'.join(lines)
 
