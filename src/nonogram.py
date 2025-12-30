@@ -1,0 +1,31 @@
+# black white nonogram
+
+import json
+import os
+import numpy as np
+
+from state import State, Mark
+import solve
+
+
+def main():
+
+	print(os.getcwd())
+	with open('json/gram.json', 'r', encoding='utf-8') as f:
+		json_str = json.load(f)
+	gram = State.from_dict(json_str)
+	
+	# print(gram)
+	ary = np.array([2, 0, 0, 2, 2, 1, 2, 3, 2])
+	print(ary)
+	print(solve.split_line(ary))
+	
+if __name__ == '__main__':
+	main()
+
+	# gram = State(
+	# 	1, 3, 
+	# 	[[2]],
+	# 	[[], [], []]
+	# )
+	# solve(gram)
