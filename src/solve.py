@@ -1,4 +1,4 @@
-# black white nonogram
+# monochrome nonogram
 
 from state import State, Mark
 import numpy as np
@@ -14,48 +14,31 @@ def fill_initial(gram:State):
 		fill_initial_line(gram.clues_col[col], gram[:, col])
 
 
-def fill_idk_stuff(clue, line):
-	splits = split_line(line)
-	clue_len = sum(clue) + len(clue) - 1
-	clue_line_diff = len(line) - clue_len
-	avail_len = splits_len(splits)
-
-import math
-
 def gen_perms(clue, line_len):
-	clue_len = get_clue_len(clue)
-	diff = line_len - clue_len
+	# mark a block
+    def place_block(start, size):
+        arr = np.zeros(line_len, dtype=np.byte)
+        arr[start:start + size] = Mark.FULL.value
+        return arr
 
-	num_clues = len(clue)
-	num_freedoms = num_clues + diff
-	# unordered sampling w/o replacement
-	num_perms = (
-		math.factorial(num_freedoms)
-		// (math.factorial(num_freedoms - num_clues)
-			* math.factorial(num_clues)))
-	idxs = [int(np.sum(clue[:i])) + i for i in range(num_clues)]
-	perms = []
-	for _ in range(num_perms):
-		perm = np.zeros((line_len), dtype=np.byte)
-		perms.append(perm)
+	# recursively yields permutations
+    def dfs(idx, pos, acc):
+		# return array if no more clue blocks
+        if idx == len(clue):
+            yield acc
+            return
+        block = clue[idx]
+		# calc range of possible block placements
+        max_start = line_len - sum(clue[idx:]) - (len(clue) - idx - 1)
+		# create variants with new block in all possible places
+        for s in range(pos, max_start + 1):
+            placed = place_block(s, block)
+			# merge existing perm part with new block
+            merged = acc | placed
+            yield from dfs(idx + 1, s + block + 1, merged)
 
-		for i in range(num_clues):
-			perm[idxs[i]:idxs[i]+clue[i]] = Mark.FULL.value
-		# line = '-' * line_len
-		# for i in range(num_clues):
-		# 	j = int(idxs[i])
-		# 	k = int(clue[i])
-		# 	line = line[:j] + '#'*k + line[j+k:]
-		# print(line)
-		
-		for x in range(num_clues-1, -1, -1):
-			new_end = idxs[x] + clue[x] + 1
-			if new_end <= line_len and (x == num_clues-1 or new_end < idxs[x+1]):
-				idxs[x] += 1
-				for y in range(x+1, num_clues):
-					idxs[y] = idxs[y-1] + clue[y-1] + 1
-				break
-	return perms
+	# collect yielded permutations as list
+    return list(dfs(0, 0, np.zeros(line_len, dtype=np.byte)))
 
 
 def splits_len(splits):
@@ -64,6 +47,7 @@ def splits_len(splits):
 
 def get_clue_len(clue):
 	return sum(clue) + len(clue) - 1
+
 
 def fill_initial_line(clue, line):
 	# get mimimum length of clues combined
@@ -83,6 +67,7 @@ def fill_initial_line(clue, line):
 			line[i] = Mark.AXED.value
 		i += 1
 
+
 def split_line(line):
 	idx = np.where(line == Mark.AXED.value)[0]
 	prev = 0
@@ -97,4 +82,6 @@ def split_line(line):
 	return np.array(chunks)
 
 
-print(gen_perms([3, 7, 2], 25))
+perms = gen_perms([16, 3, 2], 25)
+for arr in perms:
+    print(''.join('#' if x else '-' for x in arr))
