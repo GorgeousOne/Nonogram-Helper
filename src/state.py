@@ -9,17 +9,17 @@ class Mark(Enum):
 	PERHAPS = 3
 
 class State:
-	def __init__(self, height, width, rules_row=None, rules_col=None) -> None:
+	def __init__(self, height, width, clues_row=None, clues_col=None) -> None:
 		self._field = np.zeros((height, width), np.byte)
 		self.width = width
 		self.height = height
-		self.rules_row = rules_row if rules_row else [[] for _ in range(height)]
-		self.rules_col = rules_col if rules_col else [[] for _ in range(width)]
+		self.clues_row = clues_row if clues_row else [[] for _ in range(height)]
+		self.clues_col = clues_col if clues_col else [[] for _ in range(width)]
 
-		if len(self.rules_row) != self.height:
-			raise ValueError(f'len row rules ({len(self.rules_row)}) does not match height ({self.height})')
-		if len(self.rules_col) != self.width:
-			raise ValueError(f'len col rules ({len(self.rules_col)}) does not match width ({self.width})')
+		if len(self.clues_row) != self.height:
+			raise ValueError(f'len row clues ({len(self.clues_row)}) does not match height ({self.height})')
+		if len(self.clues_col) != self.width:
+			raise ValueError(f'len col clues ({len(self.clues_col)}) does not match width ({self.width})')
 
 	def __getitem__(self, key):
 		return self._field[key]
@@ -37,8 +37,8 @@ class State:
 			'width': self.width,
 			'height': self.height,
 			'field': self._field.tolist(),
-			'rules_row': self.rules_row,
-			'rules_col': self.rules_col,
+			'clues_row': self.clues_row,
+			'clues_col': self.clues_col,
 		}
 
 	@classmethod
@@ -46,8 +46,8 @@ class State:
 		state = cls(
 			height=data['height'],
 			width=data['width'],
-			rules_row=data['rules_row'],
-			rules_col=data['rules_col'],
+			clues_row=data['clues_row'],
+			clues_col=data['clues_col'],
 		)
 		if 'field' in data:
 			field = np.array(data['field'], dtype=np.byte)
@@ -55,40 +55,40 @@ class State:
 		return state
 
 	def copy(self):
-		new = State(self.width, self.height, deepcopy(self.rules_row), deepcopy(self.rules_col))
+		new = State(self.width, self.height, deepcopy(self.clues_row), deepcopy(self.clues_col))
 		new._field = self._field.copy()
 		return new
 
 	def __str__(self) -> str:
-		#determine padding around nonogram depending on max length of rules
-		pad_x = max(len(rule) for rule in self.rules_row) * 3 + 1
-		pad_y = max(len(rule) for rule in self.rules_col)
+		#determine padding around nonogram depending on max length of clues
+		pad_x = max(len(clue) for clue in self.clues_row) * 3 + 1
+		pad_y = max(len(clue) for clue in self.clues_col)
 		vis = ['   ', '███', ' X ', ' * ']
 		lines = []
 
-		# write down column rules
+		# write down column clues
 		for y in range(pad_y):
-			line = ' ' * pad_x
+			line = ' ' * (pad_x + 1)
 			# wirte down column numbers bottom aligned
-			for rule in self.rules_col:
-				off_y = pad_y - len(rule)
+			for clue in self.clues_col:
+				off_y = pad_y - len(clue)
 				if off_y <= y:
-					line += f'{rule[y - off_y]:>2} '
+					line += f'{clue[y - off_y]:>2} '
 				else:
 					line += '   '
 
 			lines.append(line)
 
 		# hline
-		sep = ' ' * pad_x + '-' * (self.width * 3)
+		sep = ' ' * pad_x + '-' * (self.width * 3 + 2)
 		lines.append(sep)
 
-		# write down row rules and rows
+		# write down row clues and rows
 		for y in range(self.height):
-			rule_str = ''.join([f'{num:>3}' for num in self.rules_row[y]])
+			clue_str = ''.join([f'{num:>3}' for num in self.clues_row[y]])
 			field_str = ''.join([vis[i] for i in self[y,:]])
 			# field_str = ''.join([f'{i:>2} ' for i in self[y,:]])
-			line = ' '*(pad_x - len(rule_str) - 1) + rule_str + ' |' + field_str + '|'
+			line = ' '*(pad_x - len(clue_str) - 1) + clue_str + ' |' + field_str + '|'
 			lines.append(line)
 
 		# hline

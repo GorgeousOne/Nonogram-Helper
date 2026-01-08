@@ -9,29 +9,70 @@ def solve(gram:State):
 
 def fill_initial(gram:State):
 	for row in range(gram.height):
-		fill_initial_line(gram.rules_row[row], gram[row, :])
+		fill_initial_line(gram.clues_row[row], gram[row, :])
 	for col in range(gram.width):
-		fill_initial_line(gram.rules_col[col], gram[:, col])
+		fill_initial_line(gram.clues_col[col], gram[:, col])
 
 
-def fill_idk_stuff(rule, line):
+def fill_idk_stuff(clue, line):
 	splits = split_line(line)
-	rule_len = sum(rule) + len(rule) - 1
-	rule_line_diff = len(line) - rule_len
+	clue_len = sum(clue) + len(clue) - 1
+	clue_line_diff = len(line) - clue_len
 	avail_len = splits_len(splits)
+
+import math
+
+def gen_perms(clue, line_len):
+	clue_len = get_clue_len(clue)
+	diff = line_len - clue_len
+
+	num_clues = len(clue)
+	num_freedoms = num_clues + diff
+	# unordered sampling w/o replacement
+	num_perms = (
+		math.factorial(num_freedoms)
+		// (math.factorial(num_freedoms - num_clues)
+			* math.factorial(num_clues)))
+	idxs = [int(np.sum(clue[:i])) + i for i in range(num_clues)]
+	perms = []
+	for _ in range(num_perms):
+		perm = np.zeros((line_len), dtype=np.byte)
+		perms.append(perm)
+
+		for i in range(num_clues):
+			perm[idxs[i]:idxs[i]+clue[i]] = Mark.FULL.value
+		# line = '-' * line_len
+		# for i in range(num_clues):
+		# 	j = int(idxs[i])
+		# 	k = int(clue[i])
+		# 	line = line[:j] + '#'*k + line[j+k:]
+		# print(line)
+		
+		for x in range(num_clues-1, -1, -1):
+			new_end = idxs[x] + clue[x] + 1
+			if new_end <= line_len and (x == num_clues-1 or new_end < idxs[x+1]):
+				idxs[x] += 1
+				for y in range(x+1, num_clues):
+					idxs[y] = idxs[y-1] + clue[y-1] + 1
+				break
+	return perms
 
 
 def splits_len(splits):
 	return np.sum(splits[:, 1] - splits[:, 0])
 
-def fill_initial_line(rule, line):
-	# get mimimum length of rules combined
-	rule_len = sum(rule) + len(rule) - 1
+
+def get_clue_len(clue):
+	return sum(clue) + len(clue) - 1
+
+def fill_initial_line(clue, line):
+	# get mimimum length of clues combined
+	clue_len = get_clue_len(clue)
 	# get possible offset
-	diff = len(line) - rule_len
+	diff = len(line) - clue_len
 	i = 0
 	# fill possible space and 
-	for num in rule:
+	for num in clue:
 		for j in range(i, i + num + diff):
 			if line[j] == Mark.FREE.value:
 				line[j] = Mark.PERHAPS.value
@@ -54,3 +95,6 @@ def split_line(line):
 	if last > prev:
 		chunks.append((prev, last))
 	return np.array(chunks)
+
+
+print(gen_perms([3, 7, 2], 25))
