@@ -2,11 +2,9 @@ import numpy as np
 from copy import deepcopy
 from enum import Enum
 
-class Mark(Enum):
-	FREE = 0
-	FULL = 1
-	AXED = 2
-	PERHAPS = 3
+FREE = 0
+FULL = 1
+AXED = 2
 
 class State:
 	def __init__(self, height, width, clues_row=None, clues_col=None) -> None:
@@ -21,11 +19,24 @@ class State:
 		if len(self.clues_col) != self.width:
 			raise ValueError(f'len col clues ({len(self.clues_col)}) does not match width ({self.width})')
 
+		self.line_ids = {}
+		for i in range(self.width):
+			self.line_ids[f'C{i}'] = (slice(None), i)
+		for i in range(self.height):
+			self.line_ids[f'R{i}'] = (i, slice(None))
+
 	def __getitem__(self, key):
 		return self._field[key]
 
 	def __setitem__(self, key, newvalue):
 		self._field[key] = newvalue
+
+	def get_line(self, line_id):
+		return self._field[self.line_ids[line_id]]
+
+	def get_clue(self, line_id: str):
+		idx = int(line_id[1:])
+		return self.clues_col[idx] if 'C' in line_id else self.clues_row[idx]
 
 	def set_field(self, field:np.ndarray):
 		if field.shape != (self.height, self.width):
@@ -63,7 +74,7 @@ class State:
 		#determine padding around nonogram depending on max length of clues
 		pad_x = max(len(clue) for clue in self.clues_row) * 3 + 1
 		pad_y = max(len(clue) for clue in self.clues_col)
-		vis = ['   ', '███', ' X ', ' * ']
+		vis = ['   ', '███', ' X ', ' ?3', ' ?4', ' ?5', ' ?6', ' ?7']
 		lines = []
 
 		# write down column clues
@@ -94,8 +105,3 @@ class State:
 		# hline
 		lines.append(sep)
 		return '\n'.join(lines)
-
-
-			
-
-
