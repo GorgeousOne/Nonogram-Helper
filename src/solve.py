@@ -8,14 +8,18 @@ def solve(gram:State):
 	fill_initial_state(gram)
 	compare_lines(gram)
 
+from tqdm import tqdm
+
 def compare_lines(gram:State):
 	queue = deque()
 	queue.extend(gram.line_ids.keys())
 
 	permuations = {}
-	for line_id in gram.line_ids.keys():
+	for line_id in tqdm(gram.line_ids.keys()):
 		permuations[line_id] = gen_perms(gram.get_clue(line_id), gram.width if 'R' in line_id else gram.height)
 	import time
+	complete = set()
+
 	while(queue):
 		line_id = queue.popleft()
 		line = gram.get_line(line_id)
@@ -27,13 +31,23 @@ def compare_lines(gram:State):
 		valid_mask = ~np.any(invalid_full | invalid_axed, axis=1)
 		perms = perms[valid_mask]
 
+		if perms.shape[0] == 0:
+			raise Exception(f'no solution found for {line_id}, clue {gram.get_clue(line_id)}')
+
 		for i in range(line.shape[0]):
-			if np.all(perms[:, i] == perms[0, i]):
-				line[i] = perms[0, i]
-				# print(line_id, i, line[i])
-				new_id = f'R{i}' if 'C' in line_id else f'C{i}'
-				if new_id not in queue:
-					queue.append(new_id)
+			common_val = perms[0, i]
+			# check out values all permutations agree on
+			if not np.all(perms[:, i] == common_val):
+				continue
+			# check if undiscovered yet
+			if line[i] == common_val:
+				continue
+			line[i] = common_val
+			new_id = f'R{i}' if 'C' in line_id else f'C{i}'
+			if new_id not in complete and new_id not in queue:
+				queue.append(new_id)
+			if ~np.any(line):
+				complete.add(line_id)
 
 		print(gram)
 		permuations[line_id] = perms
