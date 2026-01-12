@@ -1,14 +1,15 @@
 # monochrome nonogram
 
-from state import State, FREE, FULL, AXED
 import numpy as np
 from collections import deque
+from tqdm import tqdm
+
+from state import State, FREE, FULL, AXED
 
 def solve(gram:State):
 	fill_initial_state(gram)
 	compare_lines(gram)
 
-from tqdm import tqdm
 
 def compare_lines(gram:State):
 	queue = deque()
@@ -17,10 +18,12 @@ def compare_lines(gram:State):
 	permuations = {}
 	for line_id in tqdm(gram.line_ids.keys()):
 		permuations[line_id] = gen_perms(gram.get_clue(line_id), gram.width if 'R' in line_id else gram.height)
-	import time
 	complete = set()
+	counter = 0
 
 	while(queue):
+		counter += 1
+
 		line_id = queue.popleft()
 		line = gram.get_line(line_id)
 		perms = permuations[line_id]
@@ -44,24 +47,22 @@ def compare_lines(gram:State):
 				continue
 			line[i] = common_val
 			new_id = f'R{i}' if 'C' in line_id else f'C{i}'
+
 			if new_id not in complete and new_id not in queue:
 				queue.append(new_id)
-			if ~np.any(line):
-				complete.add(line_id)
+
+		if np.all(line):
+			complete.add(line_id)
 
 		print(gram)
 		permuations[line_id] = perms
-		# time.sleep(2)
 	print(gram)
+	print(counter, 'iters')
 
 
 def fill_initial_state(gram:State):
 	for line_id in gram.line_ids.keys():
 		fill_initial_line(gram.get_clue(line_id), gram.get_line(line_id))
-
-
-def splits_len(splits):
-	return np.sum(splits[:, 1] - splits[:, 0])
 
 
 def get_clue_len(clue):
@@ -83,28 +84,17 @@ def fill_initial_line(clue, line):
 			line[i] = AXED
 		i += 1
 
-
-def split_line(line):
-	idx = np.where(line == AXED)[0]
-	prev = 0
-	chunks = []
-	for i in idx:
-		if i > prev:
-			chunks.append((prev, i))
-		prev = i+1
-	last = len(line)
-	if last > prev:
-		chunks.append((prev, last))
-	return np.array(chunks)
-
+# import math
+# def get_num_perms(clue, line_len):
+# 	clue_len = get_clue_len(clue)
+# 	diff = line_len - clue_len
+# 	num_clues = len(clue)
+# 	num_freedoms = num_clues + diff
+# 	return (
+# 		math.factorial(num_freedoms) //
+# 		(math.factorial(num_freedoms - num_clues) * math.factorial(num_clues)))
 
 def gen_perms(clue, line_len):
-	# mark a block
-	def place_block(start, size):
-		arr = np.zeros(line_len, dtype=np.byte)
-		arr[start:start + size] = FULL
-		return arr
-
 	# recursively yields permutations
 	def dfs(idx, pos, acc):
 		# return array if no more clue blocks
