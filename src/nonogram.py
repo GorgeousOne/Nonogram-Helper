@@ -1,14 +1,11 @@
 # monochrome nonogram
 
 import json
-import os
 
 from state import State
 import solve_perms
 
 def main(json_path):
-	print(os.getcwd())
-
 	with open(json_path, 'r', encoding='utf-8') as f:
 		json_val = json.load(f)
 

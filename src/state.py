@@ -41,9 +41,15 @@ class State:
 	def get_line(self, line_id):
 		return self._field[self.line_ids[line_id]]
 
+	def get_len(self, line_id):
+		return self.width if 'R' in line_id else self.height
+
 	def get_clue(self, line_id: str):
 		idx = int(line_id[1:])
 		return self.clues_col[idx] if 'C' in line_id else self.clues_row[idx]
+
+	def is_complete(self):
+		return np.count_nonzero(self._field==FREE) == 0
 
 	def set_field(self, field:np.ndarray):
 		if field.shape != (self.height, self.width):

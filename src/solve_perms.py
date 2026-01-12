@@ -5,19 +5,28 @@ from collections import deque
 from tqdm import tqdm
 
 from state import State, FREE, FULL, AXED
+import time
 
 def solve(gram:State):
+	permutations = {}
+
+	start = time.perf_counter()
+	for line_id in gram.line_ids.keys():
+		permutations[line_id] = gen_perms(gram.get_clue(line_id), gram.get_len(line_id))
+	end = time.perf_counter()
+	print(f'gen perms {end-start:.3f}s')
+
+	start = time.perf_counter()
 	fill_initial_state(gram)
-	compare_lines(gram)
+	compare_lines(gram, permutations)
+	end = time.perf_counter()
+	print(f'solve {end-start:.3f}s')
 
 
-def compare_lines(gram:State):
+def compare_lines(gram:State, permutations):
 	queue = deque()
 	queue.extend(gram.line_ids.keys())
 
-	permuations = {}
-	for line_id in tqdm(gram.line_ids.keys()):
-		permuations[line_id] = gen_perms(gram.get_clue(line_id), gram.width if 'R' in line_id else gram.height)
 	complete = set()
 	counter = 0
 
@@ -26,7 +35,7 @@ def compare_lines(gram:State):
 
 		line_id = queue.popleft()
 		line = gram.get_line(line_id)
-		perms = permuations[line_id]
+		perms = permutations[line_id]
 
 		# mask away contradicting permutations (rows)
 		invalid_full = (perms == FULL) & (line == AXED)
@@ -54,10 +63,10 @@ def compare_lines(gram:State):
 		if np.all(line):
 			complete.add(line_id)
 
-		print(gram)
-		permuations[line_id] = perms
-	print(gram)
-	print(counter, 'iters')
+		# print(gram)
+		permutations[line_id] = perms
+	# print(gram)
+	# print(counter, 'iters')
 
 
 def fill_initial_state(gram:State):
@@ -94,6 +103,7 @@ def fill_initial_line(clue, line):
 # 		math.factorial(num_freedoms) //
 # 		(math.factorial(num_freedoms - num_clues) * math.factorial(num_clues)))
 
+
 def gen_perms(clue, line_len):
 	# recursively yields permutations
 	def dfs(idx, pos, acc):
@@ -113,3 +123,15 @@ def gen_perms(clue, line_len):
 
 	# collect yielded permutations as list
 	return np.vstack(list(dfs(0, 0, np.full(line_len, AXED, dtype=np.byte))))
+
+
+if __name__ == '__main__':
+	import json
+	import sys
+	json_path = sys.argv[1]
+
+	with open(json_path, 'r', encoding='utf-8') as f:
+		json_val = json.load(f)
+
+	gram = State.from_dict(json_val)
+	solve(gram)
