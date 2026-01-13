@@ -2,11 +2,11 @@ import numpy as np
 from copy import deepcopy
 from typing import Tuple
 
-FREE = 0
-FULL = 1
-AXED = 2
+FREE = 0  # unconfirmed if filled or unfilled
+FULL = 1  # filled (with black)
+AXED = 2  # unfilled (marked with an X)
 
-class State:
+class Grid:
 	def __init__(self, height, width, clues_row=None, clues_col=None) -> None:
 		self._field = np.zeros((height, width), np.byte)
 		self.width = width
@@ -24,7 +24,7 @@ class State:
 		sum_row = sum(map(sum, self.clues_row))
 		sum_col = sum(map(sum, self.clues_col))
 		if not sum_row == sum_col:
-			raise ValueError(f'number of clues for pixels in rows ({sum_row}) and columns ({sum_col}) does not match')
+			raise ValueError(f'number of clues for filled cells in rows ({sum_row}) and columns ({sum_col}) do not match')
 
 		self.line_ids = {}
 		for i in range(self.height):
@@ -35,16 +35,16 @@ class State:
 	def __getitem__(self, key):
 		return self._field[key]
 
-	def __setitem__(self, key, newvalue):
-		self._field[key] = newvalue
+	def __setitem__(self, key, new_val:int):
+		self._field[key] = new_val
 
-	def get_line(self, line_id):
+	def get_line(self, line_id:Tuple[str,int]):
 		return self._field[self.line_ids[line_id]]
 
-	def get_len(self, line_id):
+	def get_line_len(self, line_id:Tuple[str,int]):
 		return self.width if line_id[0] == 'R' else self.height
 
-	def get_clue(self, line_id:Tuple[str, int]):
+	def get_clue(self, line_id:Tuple[str,int]):
 		idx = line_id[1]
 		return self.clues_col[idx] if line_id[0] == 'C' else self.clues_row[idx]
 
@@ -79,7 +79,7 @@ class State:
 		return state
 
 	def copy(self):
-		new = State(self.width, self.height, deepcopy(self.clues_row), deepcopy(self.clues_col))
+		new = Grid(self.width, self.height, deepcopy(self.clues_row), deepcopy(self.clues_col))
 		new._field = self._field.copy()
 		return new
 
@@ -87,7 +87,7 @@ class State:
 		#determine padding around nonogram depending on max length of clues
 		pad_x = max(len(clue) for clue in self.clues_row) * 3 + 1
 		pad_y = max(len(clue) for clue in self.clues_col)
-		vis = ['   ', '███', ' X ', ' ?3', ' ?4', ' ?5', ' ?6', ' ?7']
+		vis = ['   ', '███', ' X ']
 		lines = []
 
 		# write down column clues
