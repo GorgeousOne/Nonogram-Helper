@@ -1,6 +1,6 @@
 import numpy as np
 from copy import deepcopy
-from enum import Enum
+from typing import Tuple
 
 FREE = 0
 FULL = 1
@@ -14,16 +14,23 @@ class State:
 		self.clues_row = clues_row if clues_row else [[] for _ in range(height)]
 		self.clues_col = clues_col if clues_col else [[] for _ in range(width)]
 
+		# assert num clues matches field dimensions
 		if len(self.clues_row) != self.height:
 			raise ValueError(f'len row clues ({len(self.clues_row)}) does not match height ({self.height})')
 		if len(self.clues_col) != self.width:
 			raise ValueError(f'len col clues ({len(self.clues_col)}) does not match width ({self.width})')
 
+		# assert num pixels match in rows and cols
+		sum_row = sum(map(sum, self.clues_row))
+		sum_col = sum(map(sum, self.clues_col))
+		if not sum_row == sum_col:
+			raise ValueError(f'number of clues for pixels in rows ({sum_row}) and columns ({sum_col}) does not match')
+
 		self.line_ids = {}
-		for i in range(self.width):
-			self.line_ids[f'C{i}'] = (slice(None), i)
 		for i in range(self.height):
-			self.line_ids[f'R{i}'] = (i, slice(None))
+			self.line_ids[('R' ,i)] = (i, slice(None))
+		for i in range(self.width):
+			self.line_ids[('C' ,i)] = (slice(None), i)
 
 	def __getitem__(self, key):
 		return self._field[key]
@@ -34,9 +41,15 @@ class State:
 	def get_line(self, line_id):
 		return self._field[self.line_ids[line_id]]
 
-	def get_clue(self, line_id: str):
-		idx = int(line_id[1:])
-		return self.clues_col[idx] if 'C' in line_id else self.clues_row[idx]
+	def get_len(self, line_id):
+		return self.width if line_id[0] == 'R' else self.height
+
+	def get_clue(self, line_id:Tuple[str, int]):
+		idx = line_id[1]
+		return self.clues_col[idx] if line_id[0] == 'C' else self.clues_row[idx]
+
+	def is_complete(self):
+		return np.count_nonzero(self._field==FREE) == 0
 
 	def set_field(self, field:np.ndarray):
 		if field.shape != (self.height, self.width):

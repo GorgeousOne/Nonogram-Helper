@@ -1,29 +1,41 @@
 # monochrome nonogram
 
-from state import State, FREE, FULL, AXED
 import numpy as np
 from collections import deque
 
+from state import State, FREE, FULL, AXED
+import time
+
 def solve(gram:State):
+	permutations = {}
+
+	from tqdm import tqdm
+	start = time.perf_counter()
+	for line_id in tqdm(gram.line_ids.keys()):
+		permutations[line_id] = gen_perms(gram.get_clue(line_id), gram.get_len(line_id))
+	end = time.perf_counter()
+	print(f'gen perms {end-start:.3f}s')
+
+	start = time.perf_counter()
 	fill_initial_state(gram)
-	compare_lines(gram)
+	compare_lines(gram, permutations)
+	end = time.perf_counter()
+	print(f'solve {end-start:.3f}s')
 
-from tqdm import tqdm
 
-def compare_lines(gram:State):
+def compare_lines(gram:State, permutations):
 	queue = deque()
 	queue.extend(gram.line_ids.keys())
 
-	permuations = {}
-	for line_id in tqdm(gram.line_ids.keys()):
-		permuations[line_id] = gen_perms(gram.get_clue(line_id), gram.width if 'R' in line_id else gram.height)
-	import time
 	complete = set()
+	counter = 0
 
 	while(queue):
+		counter += 1
+
 		line_id = queue.popleft()
 		line = gram.get_line(line_id)
-		perms = permuations[line_id]
+		perms = permutations[line_id]
 
 		# mask away contradicting permutations (rows)
 		invalid_full = (perms == FULL) & (line == AXED)
@@ -43,25 +55,22 @@ def compare_lines(gram:State):
 			if line[i] == common_val:
 				continue
 			line[i] = common_val
-			new_id = f'R{i}' if 'C' in line_id else f'C{i}'
+			new_id = ('R', i) if 'C' in line_id else ('C', i)
+
 			if new_id not in complete and new_id not in queue:
 				queue.append(new_id)
-			if ~np.any(line):
-				complete.add(line_id)
 
-		print(gram)
-		permuations[line_id] = perms
-		# time.sleep(2)
-	print(gram)
+		if np.all(line):
+			complete.add(line_id)
+
+		permutations[line_id] = perms
+	# print(gram)
+	print(counter, 'iters')
 
 
 def fill_initial_state(gram:State):
 	for line_id in gram.line_ids.keys():
 		fill_initial_line(gram.get_clue(line_id), gram.get_line(line_id))
-
-
-def splits_len(splits):
-	return np.sum(splits[:, 1] - splits[:, 0])
 
 
 def get_clue_len(clue):
@@ -84,27 +93,7 @@ def fill_initial_line(clue, line):
 		i += 1
 
 
-def split_line(line):
-	idx = np.where(line == AXED)[0]
-	prev = 0
-	chunks = []
-	for i in idx:
-		if i > prev:
-			chunks.append((prev, i))
-		prev = i+1
-	last = len(line)
-	if last > prev:
-		chunks.append((prev, last))
-	return np.array(chunks)
-
-
 def gen_perms(clue, line_len):
-	# mark a block
-	def place_block(start, size):
-		arr = np.zeros(line_len, dtype=np.byte)
-		arr[start:start + size] = FULL
-		return arr
-
 	# recursively yields permutations
 	def dfs(idx, pos, acc):
 		# return array if no more clue blocks
@@ -120,6 +109,18 @@ def gen_perms(clue, line_len):
 			new_acc = acc.copy()
 			new_acc[start:start + block] = FULL
 			yield from dfs(idx + 1, start + block + 1, new_acc)
-
 	# collect yielded permutations as list
 	return np.vstack(list(dfs(0, 0, np.full(line_len, AXED, dtype=np.byte))))
+
+
+if __name__ == '__main__':
+	import json
+	import sys
+	json_path = sys.argv[1]
+
+	with open(json_path, 'r', encoding='utf-8') as f:
+		json_val = json.load(f)
+
+	gram = State.from_dict(json_val)
+	solve(gram)
+	print(gram)
