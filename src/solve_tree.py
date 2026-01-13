@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 from tree import PlacementTree
 from state import State, FREE, FULL, AXED
-from typing import Dict
+from typing import Dict, Tuple
 
 import time
 
@@ -27,7 +27,7 @@ def solve(gram:State):
 	print(gram)
 
 
-def compare_lines(gram:State, trees:Dict[str,PlacementTree]):
+def compare_lines(gram:State, trees:Dict[Tuple[str, int],PlacementTree]):
 	queue = deque()
 	queue.extend(gram.line_ids.keys())
 
@@ -42,40 +42,30 @@ def compare_lines(gram:State, trees:Dict[str,PlacementTree]):
 		for i in range(line.shape[0]):
 			if line[i] != FREE:
 				continue
-			# print('---', line_id, i)
-			# print(tree.debug_nodes())
+			new_id = ('R', i) if 'C' in line_id else ('C', i)
+			j = line_id[1]
 			if tree.do_all_paths_cover(i):
 				line[i] = FULL
-				new_id = f'R{i}' if 'C' in line_id else f'C{i}'
-				j = int(line_id[1:])
 				tree.set_pos_full(i)
 				trees[new_id].set_pos_full(j)
-				# print('fill', line_id, i)
 				if new_id not in queue:
 					queue.append(new_id)
-				# if new_id not in queue:
-				# 	queue.append(line_id)
 			elif tree.do_all_paths_avoid(i):
 				line[i] = AXED
-				new_id = f'R{i}' if 'C' in line_id else f'C{i}'
-				j = int(line_id[1:])
 				tree.set_pos_axed(i)
 				trees[new_id].set_pos_axed(j)
-				# print('ax', line_id, i)
 				if new_id not in queue:
 					queue.append(new_id)
-				# if new_id not in queue:
-				# 	queue.append(line_id)
-
-		# print(queue)
 		if gram.is_complete():
 			break
 
 	if not gram.is_complete():
 		print('mhh that didnt work :(')
 		breakpoint()
+	print(counter, 'iters')
 
-def fill_initial_state(gram:State, trees:Dict[str,PlacementTree]):
+
+def fill_initial_state(gram:State, trees:Dict[Tuple[str,int],PlacementTree]):
 	for line_id in gram.line_ids.keys():
 		fill_initial_line(gram.get_clue(line_id), gram.get_line(line_id), line_id, trees[line_id], trees)
 
@@ -84,26 +74,24 @@ def get_clue_len(clue):
 	return sum(clue) + len(clue) - 1
 
 
-def fill_initial_line(clue, line, line_id, tree:PlacementTree, trees:Dict[str,PlacementTree]):
+def fill_initial_line(clue, line, line_id, tree:PlacementTree, trees:Dict[Tuple[str,int],PlacementTree]):
 	# get mimimum length of clues combined
 	clue_len = get_clue_len(clue)
 	# get possible offset
 	diff = len(line) - clue_len
 	i = 0
 	# fill possible space and
-	j = int(line_id[1:])
+	j = line_id[1]
 	for num in clue:
 		for k in range(i + diff, i + num):
 			line[k] = FULL
-			# print(gram)
-			new_id = f'R{k}' if 'C' in line_id else f'C{k}'
+			new_id = ('R', k) if 'C' in line_id else ('C', k)
 			tree.set_pos_full(k)
 			trees[new_id].set_pos_full(j)
 		i += num
 		if i < len(line) and diff == 0:
 			line[i] = AXED
-			# print(gram)
-			new_id = f'R{i}' if 'C' in line_id else f'C{i}'
+			new_id = ('R', i) if 'C' in line_id else ('C', i)
 			tree.set_pos_axed(i)
 			trees[new_id].set_pos_axed(j)
 

@@ -54,7 +54,6 @@ class PlacementTree:
 						child.parents.add(parent)
 
 	def set_pos_axed(self, pos):
-		# print(self.line_id, 'axed', pos)
 		# check if AXED cell/position intersects any permutations
 		for l in list(self._layers):
 			for n in list(l.nodes):
@@ -62,7 +61,6 @@ class PlacementTree:
 					self._remove_node(n)
 
 	def set_pos_full(self, pos):
-		# print(self.line_id, 'place', pos)
 		# check if FULL cell/position lies in a gap (node edge) of two blocks
 		for l in self._layers[:-1]:
 			for parent in list(l.nodes):
@@ -73,12 +71,10 @@ class PlacementTree:
 						self._unlink(parent, child)
 		for n in list(self._layers[0].nodes):
 			if n.start > pos:
-				# print('rm start')
 				self._remove_node(n)
 		# invalidate paths where last block ends before FULL pos
 		for n in list(self._layers[-1].nodes):
 			if n.end < pos:
-				# print('rm end')
 				self._remove_node(n)
 
 	def do_all_paths_cover(self, pos):
@@ -125,7 +121,6 @@ class PlacementTree:
 			dirty.add(c)
 		# remove node from its layer
 		self._layers[node.layer_idx].nodes.discard(node)
-		# print(' ', self.line_id, 'rm', node)
 		self._node_count -= 1
 
 		if self._node_count == 0:
@@ -135,32 +130,10 @@ class PlacementTree:
 		self._cleanup(dirty)
 
 	def _cleanup(self, dirty_nodes):
-		# prune childless parents upward
-		# prune parentless children downward
 		dead = [
 			n for n in dirty_nodes if
 				(n.layer_idx > 0 and not n.parents) or
 				(n.layer_idx < len(self._layers)-1 and not n.children)
 		]
-
 		for n in dead:
 			self._remove_node(n)
-
-	def debug(self):
-		# print("Layers:", len(self._layers))
-		total = 0
-		for i, layer in enumerate(self._layers):
-			nodes = list(layer.nodes)
-			total += len(nodes)
-			starts = [n.start for n in nodes]
-			ends = [n.end for n in nodes]
-			print(f"  L{i}: {len(nodes)} nodes, "
-				f"start-range [{min(starts) if starts else '-'} .. {max(starts) if starts else '-'}], "
-				f"end-range [{min(ends) if ends else '-'} .. {max(ends) if ends else '-'}]")
-		# print("Total nodes:", total)
-
-	def debug_nodes(self):
-		for l in self._layers:
-			print(f"Layer {l.block_idx}")
-			for n in l.nodes:
-				print(f"  [{n.start},{n.end}] parents={len(n.parents)} children={len(n.children)}")

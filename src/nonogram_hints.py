@@ -4,7 +4,9 @@ import numpy as np
 import json
 
 # json_path = 'json/bird_solved.json'
-json_path = 'json/night_solved.json'
+# json_path = 'json/night_solved.json'
+import sys
+json_path = sys.argv[1]
 
 with open(json_path, 'r', encoding='utf-8') as f:
 	json_val = json.load(f)

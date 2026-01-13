@@ -2,7 +2,6 @@
 
 import numpy as np
 from collections import deque
-from tqdm import tqdm
 
 from state import State, FREE, FULL, AXED
 import time
@@ -10,8 +9,9 @@ import time
 def solve(gram:State):
 	permutations = {}
 
+	from tqdm import tqdm
 	start = time.perf_counter()
-	for line_id in gram.line_ids.keys():
+	for line_id in tqdm(gram.line_ids.keys()):
 		permutations[line_id] = gen_perms(gram.get_clue(line_id), gram.get_len(line_id))
 	end = time.perf_counter()
 	print(f'gen perms {end-start:.3f}s')
@@ -55,7 +55,7 @@ def compare_lines(gram:State, permutations):
 			if line[i] == common_val:
 				continue
 			line[i] = common_val
-			new_id = f'R{i}' if 'C' in line_id else f'C{i}'
+			new_id = ('R', i) if 'C' in line_id else ('C', i)
 
 			if new_id not in complete and new_id not in queue:
 				queue.append(new_id)
@@ -63,10 +63,9 @@ def compare_lines(gram:State, permutations):
 		if np.all(line):
 			complete.add(line_id)
 
-		# print(gram)
 		permutations[line_id] = perms
 	# print(gram)
-	# print(counter, 'iters')
+	print(counter, 'iters')
 
 
 def fill_initial_state(gram:State):
@@ -93,16 +92,6 @@ def fill_initial_line(clue, line):
 			line[i] = AXED
 		i += 1
 
-# import math
-# def get_num_perms(clue, line_len):
-# 	clue_len = get_clue_len(clue)
-# 	diff = line_len - clue_len
-# 	num_clues = len(clue)
-# 	num_freedoms = num_clues + diff
-# 	return (
-# 		math.factorial(num_freedoms) //
-# 		(math.factorial(num_freedoms - num_clues) * math.factorial(num_clues)))
-
 
 def gen_perms(clue, line_len):
 	# recursively yields permutations
@@ -120,7 +109,6 @@ def gen_perms(clue, line_len):
 			new_acc = acc.copy()
 			new_acc[start:start + block] = FULL
 			yield from dfs(idx + 1, start + block + 1, new_acc)
-
 	# collect yielded permutations as list
 	return np.vstack(list(dfs(0, 0, np.full(line_len, AXED, dtype=np.byte))))
 
@@ -135,3 +123,4 @@ if __name__ == '__main__':
 
 	gram = State.from_dict(json_val)
 	solve(gram)
+	print(gram)
