@@ -41,9 +41,6 @@ def count_patterns(grid:Grid):
 			math.factorial(num_freedoms) // (
 				math.factorial(num_freedoms - num_clues) *
 				math.factorial(num_clues)))
-		if line_id == ('R', 3):
-			print('r3', num_perms)
-
 		total_perms += num_perms
 	return total_perms
 

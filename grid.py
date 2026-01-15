@@ -1,18 +1,19 @@
 import numpy as np
 from copy import deepcopy
-from typing import Tuple
+from typing import Tuple, List
+import math
 
 FREE = 0  # unconfirmed if filled or unfilled
 FULL = 1  # filled (with black)
 AXED = 2  # unfilled (marked with an X)
 
 class Grid:
-	def __init__(self, height, width, clues_row=None, clues_col=None) -> None:
+	def __init__(self, height, width, clues_row:List[List[int]]=None, clues_col:List[List[int]]=None) -> None:
 		self._field = np.zeros((height, width), np.byte)
 		self.width = width
 		self.height = height
-		self.clues_row = clues_row if clues_row else [[] for _ in range(height)]
-		self.clues_col = clues_col if clues_col else [[] for _ in range(width)]
+		self.clues_row: List[List[int]] = clues_row if clues_row else [[] for _ in range(height)]
+		self.clues_col: List[List[int]] = clues_col if clues_col else [[] for _ in range(width)]
 
 		# assert num clues matches field dimensions
 		if len(self.clues_row) != self.height:
@@ -118,3 +119,25 @@ class Grid:
 		# hline
 		lines.append(sep)
 		return '\n'.join(lines)
+
+	def is_symmetrical_horz(self):
+		return self.is_symmetrical(self.clues_row, self.clues_col)
+
+	def is_symmetrical_vert(self):
+		return self.is_symmetrical(self.clues_col, self.clues_row)
+
+	def is_symmetrical(self, clues_inline: List[List[int]], clues_paired: List[List[int]]):
+		len_paired = len(clues_paired)
+
+		for i in range(math.ceil(len_paired) // 2):
+			if clues_paired[i] != clues_paired[len_paired-i-1]:
+				return False
+		for clue in clues_inline:
+			len_clue = len(clue)
+			for i in range(math.ceil(len_clue // 2)):
+				if clue[i] != clue[len_clue-i-1]:
+					return False
+		return True
+
+
+

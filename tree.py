@@ -46,12 +46,6 @@ class PatternTree:
 		self._levels: List[SegmentSet] = [SegmentSet(i) for i in range(len(clue))]
 		self._node_count = 0
 		self._build(clue, line_len)
-		if line_id == ('R', 3):
-			edges = 0
-			for l in self._levels:
-				for n in l.nodes:
-					edges += len(n.children)
-			print(line_id, 'nodes', self._node_count, 'edges', edges)
 
 	def _build(self, clue, line_len):
 		# precompute possible blocks with varying start positions

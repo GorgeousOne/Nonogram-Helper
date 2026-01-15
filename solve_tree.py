@@ -4,7 +4,7 @@ from collections import deque
 
 from tree import PatternTree
 from grid import Grid, FREE, FULL, AXED
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import time
 
@@ -52,6 +52,11 @@ def initialize_grid(grid:Grid, trees:Dict[Tuple[str,int],PatternTree]):
 	for line_id in grid.line_ids.keys():
 		initialize_line(grid.get_clue(line_id), grid.get_line(line_id), line_id, trees[line_id], trees)
 
+	if grid.is_symmetrical_horz():
+		initialize_symmetry(grid, [l for l in grid.line_ids.keys() if 'R' in l], trees)
+	elif grid.is_symmetrical_vert():
+		initialize_symmetry(grid, [l for l in grid.line_ids.keys() if 'C' in l], trees)
+
 
 def initialize_line(clue, line, line_id, tree:PatternTree, trees:Dict[Tuple[str,int],PatternTree]):
 	# get mimimum length of clues combined
@@ -74,6 +79,27 @@ def initialize_line(clue, line, line_id, tree:PatternTree, trees:Dict[Tuple[str,
 			tree.set_cell_axed(i)
 			trees[new_id].set_cell_axed(j)
 		i += 1
+
+def initialize_symmetry(grid:Grid, line_ids:List[Tuple[str,int]], trees:Dict[Tuple[str,int],PatternTree]):
+	line_len = grid.get_line_len(line_ids[0])
+
+	for line_id in line_ids:
+		line = grid.get_line(line_id)
+		clue = grid.get_clue(line_id)
+		clue_len = len(clue)
+		tree = trees[line_id]
+		if clue_len % 2 == 0:
+			for i in range(line_len//2-1, line_len//2+1):
+				line[i] = AXED
+				tree.set_cell_axed(i)
+		else:
+			segment = clue[clue_len//2]
+			for i in range(line_len//2 - segment//2, line_len//2 + segment//2):
+				line[i] = FULL
+				tree.set_cell_full(i)
+			for i in [line_len//2 - segment//2 - 1, line_len//2 + segment//2]:
+				line[i] = AXED
+				tree.set_cell_axed(i)
 
 
 def solve_free_cells(grid:Grid, trees:Dict[Tuple[str,int],PatternTree]):
@@ -99,18 +125,21 @@ def solve_free_cells(grid:Grid, trees:Dict[Tuple[str,int],PatternTree]):
 				trees[new_id].set_cell_full(j)
 				if new_id not in queue:
 					queue.append(new_id)
+				if line_id not in queue:
+					queue.append(line_id)
 			elif tree.do_all_patterns_avoid(i):
 				line[i] = AXED
 				tree.set_cell_axed(i)
 				trees[new_id].set_cell_axed(j)
 				if new_id not in queue:
 					queue.append(new_id)
+				if line_id not in queue:
+					queue.append(line_id)
 		if grid.is_complete():
 			break
 
 	if not grid.is_complete():
 		print('mhh that didnt work :(')
-		breakpoint()
 	print(counter, 'iters')
 
 
@@ -125,6 +154,10 @@ def main():
 	grid = Grid.from_dict(json_val)
 	solve(grid)
 	print(grid)
+
+	save_path = json_path.replace('.json', '_solved.json')
+	with open(save_path, 'w', encoding='utf-8') as f:
+		json.dump(grid.to_dict(), f)
 
 if __name__ == '__main__':
 	main()
