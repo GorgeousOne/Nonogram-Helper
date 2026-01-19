@@ -6,6 +6,7 @@ from typing import Dict
 
 from grid import Grid, FREE, FULL, AXED
 import time
+from nono_math import calc_clue_len
 
 def solve(grid:Grid):
 	pattern_list = {}
@@ -33,7 +34,7 @@ def count_patterns(grid:Grid):
 	for line_id in grid.line_ids.keys():
 		line_len = grid.get_line_len(line_id)
 		clue = grid.get_clue(line_id)
-		clue_len = get_clue_len(clue)
+		clue_len = calc_clue_len(clue)
 		diff = line_len - clue_len
 		num_clues = len(clue)
 		num_freedoms = num_clues + diff # unordered sampling w/o replacement
@@ -45,10 +46,6 @@ def count_patterns(grid:Grid):
 	return total_perms
 
 
-def get_clue_len(clue):
-	return sum(clue) + len(clue) - 1
-
-
 def initialize_grid(grid:Grid):
 	for line_id in grid.line_ids.keys():
 		initialize_line(grid.get_clue(line_id), grid.get_line(line_id))
@@ -56,7 +53,7 @@ def initialize_grid(grid:Grid):
 
 def initialize_line(clue, line):
 	# get mimimum length of clues combined
-	clue_len = get_clue_len(clue)
+	clue_len = calc_clue_len(clue)
 	# get possible offset
 	diff = len(line) - clue_len
 	i = 0

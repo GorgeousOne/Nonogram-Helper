@@ -1,7 +1,7 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-
+from nono_math import calc_clue_len
 FULL = 1
 AXED = 0
 
@@ -21,9 +21,6 @@ def gen_line_patterns(clue, line_len) -> np.ndarray:
 	return np.vstack(list(dfs(0, 0, np.full(line_len, AXED, dtype=np.byte))))
 
 
-def get_clue_len(clue):
-	return sum(clue) + len(clue) - 1
-
 def random_clue(target_len, max_block_len):
 	'''generate a clue with random '''
 	clue = [max_block_len]
@@ -37,7 +34,7 @@ def random_clue(target_len, max_block_len):
 	random.shuffle(clue)
 
 	# try to fix 1 off clues (not always possible e.g. filling line 2 with 1s)
-	if get_clue_len(clue) == target_len - 1:
+	if calc_clue_len(clue) == target_len - 1:
 		for i in range(1, len(clue)):
 			if clue[i] < max_block_len:
 				clue[i] += 1

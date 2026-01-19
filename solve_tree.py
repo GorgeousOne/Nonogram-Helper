@@ -3,6 +3,7 @@
 from collections import deque
 
 from tree import PatternTree
+from nono_math import calc_clue_len
 from grid import Grid, FREE, FULL, AXED
 from typing import Dict, Tuple, List
 
@@ -39,10 +40,6 @@ def count_tree_sizes(trees:Dict[Tuple[str,int],PatternTree]):
 	return nodes, edges
 
 
-def get_clue_len(clue):
-	return sum(clue) + len(clue) - 1
-
-
 def get_cross_line(line_id, cell):
 	'''Returns the line id crossing a given line at a cell'''
 	return ('R', cell) if 'C' in line_id else ('C', cell)
@@ -60,7 +57,7 @@ def initialize_grid(grid:Grid, trees:Dict[Tuple[str,int],PatternTree]):
 
 def initialize_line(clue, line, line_id, tree:PatternTree, trees:Dict[Tuple[str,int],PatternTree]):
 	# get mimimum length of clues combined
-	clue_len = get_clue_len(clue)
+	clue_len = calc_clue_len(clue)
 	# get possible offset
 	diff = len(line) - clue_len
 	i = 0
@@ -153,11 +150,23 @@ def main():
 
 	grid = Grid.from_dict(json_val)
 	solve(grid)
-	print(grid)
+	# print(grid)
 
-	save_path = json_path.replace('.json', '_solved.json')
-	with open(save_path, 'w', encoding='utf-8') as f:
-		json.dump(grid.to_dict(), f)
+	# save_path = json_path.replace('.json', '_solved.json')
+	# with open(save_path, 'w', encoding='utf-8') as f:
+	# 	json.dump(grid.to_dict(), f)
+
+def debug():
+	tr = PatternTree(('R', 0), [1,1,4,3,3,1,2,2,2,1,1,4,3,4,5,3], 70)
+	start = time.perf_counter()
+	tr.set_cell_axed(0)
+	end = time.perf_counter()
+	print(f'ax cell {end-start:.4f}s')
+
+	print(tr._count_tree_size())
+	print(tr._num_patterns)
+
 
 if __name__ == '__main__':
 	main()
+	# debug()
