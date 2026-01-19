@@ -61,10 +61,10 @@ def initialize_line(clue, line):
 	diff = len(line) - clue_len
 	i = 0
 	# fill possible space and
-	for segment in clue:
-		for j in range(i + diff, i + segment):
+	for block in clue:
+		for j in range(i + diff, i + block):
 			line[j] = FULL
-		i += segment
+		i += block
 		if i < len(line) and diff == 0:
 			line[i] = AXED
 		i += 1

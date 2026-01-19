@@ -93,11 +93,11 @@ def initialize_symmetry(grid:Grid, line_ids:List[Tuple[str,int]], trees:Dict[Tup
 				line[i] = AXED
 				tree.set_cell_axed(i)
 		else:
-			segment = clue[clue_len//2]
-			for i in range(line_len//2 - segment//2, line_len//2 + segment//2):
+			block = clue[clue_len//2]
+			for i in range(line_len//2 - block//2, line_len//2 + block//2):
 				line[i] = FULL
 				tree.set_cell_full(i)
-			for i in [line_len//2 - segment//2 - 1, line_len//2 + segment//2]:
+			for i in [line_len//2 - block//2 - 1, line_len//2 + block//2]:
 				line[i] = AXED
 				tree.set_cell_axed(i)
 

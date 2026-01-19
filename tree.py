@@ -2,33 +2,39 @@ from typing import Set, List, Collection
 from typing_extensions import Self
 
 
-class SegmentPlacementNode:
-	'''A node representing one possible placement of a clue segment in its line'''
-	def __init__(self, segment_idx, start, length):
-		self.segment_idx = segment_idx
+class BlockPlacement:
+	'''A node representing one possible placement of a clue block in its line'''
+	def __init__(self, block_idx, start, length):
+		self.block_idx = block_idx
 		self.start = start
 		self.end = start + length - 1
 		self.children: Set[Self] = set()
 		self.parents: Set[Self] = set()
 
 	def contains(self, cell):
-		'''Returns true if a cell position intersects with this segment placement'''
+		'''Returns true if a cell position intersects with this block placement'''
 		return self.start <= cell <= self.end
 
-	def __str__(self) -> str:
-		return f'#{self.segment_idx}:[{self.start}-{self.end}]'
+	def __hash__(self) -> int:
+		return hash((self.block_idx, self.start))
 
-class SegmentSet:
-	'''Container for all possible placements (nodes) of a clue segment'''
-	def __init__(self, segment_idx):
-		self.segment_idx = segment_idx
-		self.nodes: Set[SegmentPlacementNode] = set()
+	def __repr__(self) -> str:
+		return f'#{self.block_idx}[{self.start}-{self.end}]'
 
+
+class BlockSet:
+	'''Container for all possible placements (nodes) of a clue block'''
+	def __init__(self, block_idx):
+		self.block_idx = block_idx
+		self.nodes: Set[BlockPlacement] = set()
+
+	def __repr__(self) -> str:
+		return str(self.nodes)
 
 class PatternTree:
-	'''Container for all clue segment patterns of a line using a tree.
-	Each node holds one possible placement of a segment.
-	Child nodes are placements of the subsequent clue segment.
+	'''Container for all clue block patterns of a line using a tree.
+	Each node holds one possible placement of a block.
+	Child nodes are placements of the subsequent clue block.
 	A full pattern is encoded in a path from one root node to one leaf node.
 	This way partial clue patterns repeating across multiple patterns can be reused
 	simply by creating new edges instead of generating millions of matrix rows.
@@ -43,7 +49,8 @@ class PatternTree:
 	'''
 	def __init__(self, line_id, clue, line_len):
 		self.line_id = line_id
-		self._levels: List[SegmentSet] = [SegmentSet(i) for i in range(len(clue))]
+		self._num_blocks = len(clue)
+		self._levels: List[BlockSet] = [BlockSet(i) for i in range(self._num_blocks)]
 		self._node_count = 0
 		self._build(clue, line_len)
 
@@ -51,19 +58,19 @@ class PatternTree:
 		# precompute possible blocks with varying start positions
 		next_min_start = 0
 		for i, block_len in enumerate(clue):
-			rem = sum(clue[i:]) + (len(clue) - i - 1)
+			rem = sum(clue[i:]) + (self._num_blocks - i - 1)
 			max_start = line_len - rem
 			level = self._levels[i]
 
-			for l in range(next_min_start, max_start + 1):
-				node = SegmentPlacementNode(i, l, block_len)
+			for start in range(next_min_start, max_start + 1):
+				node = BlockPlacement(i, start, block_len)
 				level.nodes.add(node)
 				self._node_count += 1
 
 			next_min_start += block_len + 1
 
 		# link possible permutations of neighboring blocks
-		for i in range(len(clue) - 1):
+		for i in range(self._num_blocks - 1):
 			for parent in self._levels[i].nodes:
 				for child in self._levels[i + 1].nodes:
 					# keep gap between blocks
@@ -73,77 +80,87 @@ class PatternTree:
 
 	def set_cell_axed(self, cell):
 		'''Remove all patterns if given position is AXED'''
-		# remove patterns if AXED cell/position intersects any segment
-		for l in list(self._levels):
-			for n in list(l.nodes):
-				if n.contains(cell):
-					self._remove_node(n)
+		# remove patterns if AXED cell/position intersects any block
+		for level in list(self._levels):
+			for node in list(level.nodes):
+				if node.contains(cell):
+					self._remove_node(node)
 
 	def set_cell_full(self, cell):
 		'''Removes all patterns that are invalid if given cell is FULL'''
-		# remove patterns where FULL cell lies in the gap (node edge) between two segments
-		for l in self._levels[:-1]:
-			for parent in list(l.nodes):
+		# remove patterns where FULL cell lies in the gap (node edge) between two blocks
+		for level in self._levels[:-1]:
+			for parent in list(level.nodes):
 				if parent.end >= cell:
 					continue
 				for child in list(parent.children):
 					if child.start > cell:
 						self._unlink(parent, child)
-		# remove patterns with first segment starting after FULL cell
-		for n in list(self._levels[0].nodes):
-			if n.start > cell:
-				self._remove_node(n)
-		# remove patterns with last segment ending before FULL cell
-		for n in list(self._levels[-1].nodes):
-			if n.end < cell:
-				self._remove_node(n)
+		# remove patterns with first block starting after FULL cell
+		for node in list(self._levels[0].nodes):
+			if node.start > cell:
+				self._remove_node(node)
+		# remove patterns with last block ending before FULL cell
+		for node in list(self._levels[-1].nodes):
+			if node.end < cell:
+				self._remove_node(node)
 
 	def do_all_patterns_cover(self, cell):
 		'''Returns true if all remaining possible patterns of this line are FULL at a given cell'''
-		# check if all nodes of exactly one segment cover the position
-		# => if multiple (moving) segments were able to cover a position, then at least one other pattern
+		# check if all nodes of exactly one block cover the position
+		# => if multiple (moving) blocks were able to cover a position, then at least one other pattern
 		# would exist where the gap between said blocks is placed on the cell in question
 		levels_covering = set()
 		nodes_covering = []
-		for l in self._levels:
-			for n in l.nodes:
-				if n.contains(cell):
-					levels_covering.add(n.segment_idx)
-					nodes_covering.append(n)
+		for level in self._levels:
+			for node in level.nodes:
+				if node.contains(cell):
+					levels_covering.add(node.block_idx)
+					nodes_covering.append(node)
 		if len(levels_covering) != 1:
 			return False
 		return len(nodes_covering) == len(self._levels[levels_covering.pop()].nodes)
 
 	def do_all_patterns_avoid(self, cell):
 		'''Returns true if all remaining possible patterns of this line have a gap at the given cell (aka AXED)'''
-		for l in list(self._levels):
-			for n in list(l.nodes):
-				if n.contains(cell):
+		for level in list(self._levels):
+			for node in list(level.nodes):
+				if node.contains(cell):
 					return False
 		return True
 
+	def get_full_probability(self, cell):
+		num_patterns = 0
+		for level in self._levels:
+			for node in level.nodes:
+				if not node.contains(cell):
+					continue
+				num_patterns += self._count_patterns(node)
+		return num_patterns
+
 	def _unlink(self, parent, child):
-		'''Removes patterns where two adjacent segment positions (parent child) are invalid
+		'''Removes patterns where two adjacent block positions (parent child) are invalid
 		(due to a FULL cell in the gap between them)'''
 		parent.children.discard(child)
 		child.parents.discard(parent)
+		# TODO find out if this only happens under very specific conditions
 		if not child.parents:
 			self._remove_node(child)
 		if not parent.children:
 			self._remove_node(parent)
 
 	def _remove_node(self, node):
-		'''Remove a segment node, including recursively removing patterns connected to it'''
+		'''Remove a block node, including recursively removing patterns connected to it'''
 		dirty = set()
 		# unlink node from its parents and children
-		for p in list(node.parents):
-			p.children.discard(node)
-			dirty.add(p)
-		for c in list(node.children):
-			c.parents.discard(node)
-			dirty.add(c)
+		for parent in list(node.parents):
+			parent.children.discard(node)
+			dirty.add(parent)
+		for child in list(node.children):
+			child.parents.discard(node)
+			dirty.add(child)
 		# remove node from its level
-		self._levels[node.segment_idx].nodes.discard(node)
+		self._levels[node.block_idx].nodes.discard(node)
 		self._node_count -= 1
 
 		if self._node_count == 0:
@@ -152,11 +169,55 @@ class PatternTree:
 		# prune orphans upward and downward
 		self._cleanup(dirty)
 
-	def _cleanup(self, dirty_nodes:Collection[SegmentPlacementNode]):
+	def _cleanup(self, dirty_nodes:Collection[BlockPlacement]):
 		dead = [
-			n for n in dirty_nodes if
-				(n.segment_idx > 0 and not n.parents) or
-				(n.segment_idx < len(self._levels)-1 and not n.children)
+			node for node in dirty_nodes if
+				(node.block_idx > 0 and not node.parents) or
+				(node.block_idx < len(self._levels)-1 and not node.children)
 		]
-		for n in dead:
-			self._remove_node(n)
+		for node in dead:
+			self._remove_node(node)
+
+	def _count_patterns(self, node:BlockPlacement) -> int:
+		return self._count_parent_patterns(node) * self._count_child_patterns(node)
+
+	def _count_parent_patterns(self, node:BlockPlacement) -> int:
+		if node.block_idx == 0:
+			return 1
+		num_node_visits = {p: 1 for p in node.parents}
+		to_visit = set(node.parents)
+		total_patterns = 0
+		# walk tree paths reachable from given node upwards
+		for _ in range(0, node.block_idx-1):
+			next_to_visit = set()
+			for parent in to_visit:
+				# accumulate node visits by child node visits
+				for grandparent in parent.parents:
+					num_node_visits[grandparent] = num_node_visits.get(grandparent, 0) + num_node_visits[parent]
+					next_to_visit.add(grandparent)
+			to_visit = next_to_visit
+		# sum total paths at leaf node level
+		total_patterns = sum((num_node_visits[p] for p in to_visit))
+		return total_patterns
+
+	def _count_child_patterns(self, node:BlockPlacement) -> int:
+		if node.block_idx == self._num_blocks-1:
+			return 1
+		num_node_visits = {c: 1 for c in node.children}
+		to_visit = set(node.children)
+		# walk tree paths reachable from given node downwards
+		for _ in range(node.block_idx+1, self._num_blocks-1):
+			next_to_visit = set()
+			for child in to_visit:
+				# accumulate node visits by parent node visits
+				for grand_child in child.children:
+					next_to_visit.add(grand_child)
+					num_node_visits[grand_child] = num_node_visits.get(grand_child, 0) + num_node_visits[child]
+			to_visit = next_to_visit
+		# sum total paths at leaf node level
+		total_patterns = sum((num_node_visits[c] for c in to_visit))
+		return total_patterns
+
+
+	def __repr__(self) -> str:
+		return '\n'.join([str(l) for l in self._levels])

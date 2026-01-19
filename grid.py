@@ -8,7 +8,7 @@ FULL = 1  # filled (with black)
 AXED = 2  # unfilled (marked with an X)
 
 class Grid:
-	def __init__(self, height, width, clues_row:List[List[int]]=None, clues_col:List[List[int]]=None) -> None:
+	def __init__(self, height, width, clues_row:List[List[int]]=None, clues_col:List[List[int]]=None):
 		self._field = np.zeros((height, width), np.byte)
 		self.width = width
 		self.height = height
